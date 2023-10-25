@@ -9,6 +9,22 @@ import csv
 import json
 import html
 import xml.etree.ElementTree as ET
+import logging
+
+# Configure the logging
+logging.basicConfig(filename="recon_log.txt", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+def log_and_print(message, level=logging.INFO):
+    """
+    Log a message and print it to the console with extensive error handling.
+    :param message: The message to log and print.
+    :param level: The logging level (default is INFO).
+    """
+    try:
+        logging.log(level, message)
+        print(message)
+    except Exception as e:
+        print(f"An error occurred while logging and printing the message: {str(e)}")
 
 def get_ip_address(domain):
     try:
