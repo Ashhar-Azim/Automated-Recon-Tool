@@ -21,7 +21,7 @@ def xmas_scan(ip_address, start_port, end_port):
     open_ports = []
     for port in range(start_port, end_port + 1):
         src_port = RandShort()
-        response = sr1(IP(dst=ip_address)/TCP(sport=src_port, dport=port, flags="FPU"), timeout=2, verbose=0)
+        response = sr1(IP(dst=ip_address) / TCP(sport=src_port, dport=port, flags="FPU"), timeout=2, verbose=0)
         if response and response.haslayer(TCP) and response[TCP].flags == 0x14:
             open_ports.append(port)
     return open_ports
@@ -96,7 +96,7 @@ def save_results(results, format):
             json.dump(results, jsonfile, indent=4)
     elif format == "html":
         with open("recon_results.html", 'w') as htmlfile:
-            htmlfile.write(html.escape(json.dumps(results, indent=4)))
+            htmlfile.write(html.escape(json.dumps(results, indent=4))
     elif format == "xml":
         root = ET.Element("ReconResults")
         for result in results:
@@ -157,11 +157,10 @@ if __name__ == "__main__":
                 print(f"{key}: {value}")
         else:
             print("Failed to retrieve geolocation information.")
-        
+
         network_map = create_network_map([target_ip] + dns_results, xmas_open_ports)
         plot_network_map(network_map)
 
-        # Collect results for saving
         results = [{
             'IP Address': target_ip,
             'Open Ports': xmas_open_ports,
@@ -175,6 +174,3 @@ if __name__ == "__main__":
         save_results(results, save_format)
     else:
         print("Invalid domain or IP address")
-
-
-
