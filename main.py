@@ -3,6 +3,8 @@ import whois
 import dns.resolver
 import requests
 from scapy.all import *
+import networkx as nx
+import matplotlib.pyplot as plt
 
 def get_ip_address(domain):
     try:
@@ -56,6 +58,28 @@ def get_geolocation(ip_address):
     except requests.exceptions.RequestException:
         return None
 
+def create_network_map(ip_addresses, open_ports):
+    G = nx.Graph()
+
+    for ip in ip_addresses:
+        G.add_node(ip, type='host')
+        for port in open_ports:
+            G.add_node(f"{ip}:{port}", type='service')
+            G.add_edge(ip, f"{ip}:{port}")
+
+    return G
+
+def plot_network_map(G):
+    pos = nx.spring_layout(G)
+    node_types = [G.nodes[n]['type'] for n in G.nodes]
+
+    nx.draw_networkx_nodes(G, pos, node_size=500, node_color='lightblue', nodelist=[n for n, t in zip(G.nodes, node_types) if t == 'host'])
+    nx.draw_networkx_nodes(G, pos, node_size=300, node_color='orange', nodelist=[n for n, t in zip(G.nodes, node_types) if t == 'service'])
+    nx.draw_networkx_labels(G, pos)
+    nx.draw_networkx_edges(G, pos, width=1, edge_color='gray')
+    plt.axis('off')
+    plt.show()
+
 if __name__ == "__main__":
     target_domain = input("Enter the target domain or IP address: ")
     target_ip = get_ip_address(target_domain)
@@ -101,6 +125,10 @@ if __name__ == "__main__":
                 print(f"{key}: {value}")
         else:
             print("Failed to retrieve geolocation information.")
+        
+        network_map = create_network_map([target_ip] + dns_results, xmas_open_ports)
+        plot_network_map(network_map)
     else:
         print("Invalid domain or IP address")
+
 
