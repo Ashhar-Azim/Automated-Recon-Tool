@@ -1,5 +1,6 @@
 import socket
 import whois
+import dns.resolver
 
 def get_ip_address(domain):
     try:
@@ -22,7 +23,7 @@ def get_whois_info(domain):
     try:
         whois_info = whois.whois(domain)
         return whois_info
-    except Exception as e:
+    except whois.parser.PywhoisError as e:
         return str(e)
 
 def banner_grabbing(ip_address, ports):
@@ -37,6 +38,14 @@ def banner_grabbing(ip_address, ports):
         except (socket.timeout, ConnectionRefusedError, OSError) as e:
             banners[port] = f"Error: {str(e)}"
     return banners
+
+def dns_enumeration(domain):
+    try:
+        answers = dns.resolver.query(domain, 'A')
+        ip_addresses = [r.address for r in answers]
+        return ip_addresses
+    except dns.resolver.NXDOMAIN:
+        return None
 
 if __name__ == "__main__":
     target_domain = input("Enter the target domain or IP address: ")
@@ -65,5 +74,14 @@ if __name__ == "__main__":
             print(whois_info)
         else:
             print("Failed to retrieve WHOIS information.")
+        
+        dns_results = dns_enumeration(target_domain)
+        if dns_results:
+            print("DNS Enumeration:")
+            for ip in dns_results:
+                print(f"{target_domain} resolves to {ip}")
+        else:
+            print(f"No DNS records found for {target_domain}")
     else:
         print("Invalid domain or IP address.")
+
