@@ -31,15 +31,14 @@ def get_ip_address(domain):
         ip_address = socket.gethostbyname(domain)
         return ip_address
     except socket.gaierror as e:
-        print(f"Error: {e}")
+        log_and_print(f"Error: {e}", level=logging.ERROR)
         return None
     except socket.error as e:
-        print(f"Socket error: {e}")
+        log_and_print(f"Socket error: {e}", level=logging.ERROR)
         return None
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        log_and_print(f"An unexpected error occurred: {e}", level=logging.ERROR)
         return None
-
 
 def xmas_scan(ip_address, start_port, end_port):
     open_ports = []
@@ -50,11 +49,11 @@ def xmas_scan(ip_address, start_port, end_port):
             if response and response.haslayer(TCP) and response[TCP].flags == 0x14:
                 open_ports.append(port)
     except PermissionError as e:
-        print(f"Permission error: {e}")
+        log_and_print(f"Permission error: {e}", level=logging.ERROR)
     except Scapy_Exception as e:
-        print(f"Scapy error: {e}")
+        log_and_print(f"Scapy error: {e}", level=logging.ERROR)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        log_and_print(f"An unexpected error occurred: {e}", level=logging.ERROR)
 
     return open_ports
 
@@ -63,8 +62,10 @@ def get_whois_info(domain):
         whois_info = whois.whois(domain)
         return whois_info
     except whois.parser.PywhoisError as e:
+        log_and_print(f"WHOIS error: {e}", level=logging.ERROR)
         return f"WHOIS error: {e}"
     except Exception as e:
+        log_and_print(f"An unexpected error occurred: {e}", level=logging.ERROR)
         return f"An unexpected error occurred: {e}"
 
 def banner_grabbing(ip_address, ports):
@@ -92,10 +93,13 @@ def dns_enumeration(domain):
         ip_addresses = [r.address for r in answers]
         return ip_addresses
     except dns.resolver.NXDOMAIN:
+        log_and_print(f"Error: The domain '{domain}' does not exist (NXDOMAIN).", level=logging.ERROR)
         return f"Error: The domain '{domain}' does not exist (NXDOMAIN)."
     except dns.exception.DNSException as e:
+        log_and_print(f"DNS query for '{domain}' failed with error: {e}", level=logging.ERROR)
         return f"DNS query for '{domain}' failed with error: {e}"
     except Exception as e:
+        log_and_print(f"An unexpected error occurred for domain '{domain}': {str(e}", level=logging.ERROR)
         return f"An unexpected error occurred for domain '{domain}': {str(e)}"
 
 def get_geolocation(ip_address):
@@ -105,19 +109,25 @@ def get_geolocation(ip_address):
         data = response.json()
         return data
     except requests.exceptions.RequestException as e:
+        log_and_print(f"Error: {str(e)}", level=logging.ERROR)
         return f"Error: {str(e)}"
     except requests.exceptions.HTTPError as e:
+        log_and_print(f"HTTP error: {str(e)}", level=logging.ERROR)
         return f"HTTP error: {str(e)}"
     except ValueError as e:
+        log_and_print(f"Error parsing JSON response: {str(e)}", level=logging.ERROR)
         return f"Error parsing JSON response: {str(e)}"
     except Exception as e:
+        log_and_print(f"An unexpected error occurred: {str(e)}", level=logging.ERROR)
         return f"An unexpected error occurred: {str(e)}"
 
 def create_network_map(ip_addresses, open_ports):
     if not ip_addresses:
+        log_and_print("No IP addresses provided. Cannot create a network map.", level=logging.WARNING)
         print("No IP addresses provided. Cannot create a network map.")
         return None
     if not open_ports:
+        log_and_print("No open ports provided. The network map will not contain service nodes.", level=logging.INFO)
         print("No open ports provided. The network map will not contain service nodes.")
     G = nx.Graph()
 
@@ -132,6 +142,7 @@ def create_network_map(ip_addresses, open_ports):
 
 def plot_network_map(G):
     if G is None:
+        log_and_print("The network map is empty. Cannot plot.", level=logging.WARNING)
         print("The network map is empty. Cannot plot.")
         return
 
@@ -146,6 +157,7 @@ def plot_network_map(G):
         plt.axis('off')
         plt.show()
     except Exception as e:
+        log_and_print(f"An error occurred while plotting the network map: {str(e)}", level=logging.ERROR)
         print(f"An error occurred while plotting the network map: {str(e)}")
 
 def save_results(results, format):
@@ -177,24 +189,26 @@ def save_results(results, format):
                     for key, value in result.items():
                         txtfile.write(f"{key}: {value}\n")
         else:
+            log_and_print(f"Unsupported format: {format}. Results were not saved.", level=logging.WARNING)
             print(f"Unsupported format: {format}. Results were not saved.")
     except Exception as e:
+        log_and_print(f"An error occurred while saving results: {str(e)}", level=logging.ERROR)
         print(f"An error occurred while saving results: {str(e)}")
 
-#DRIVER CODE
+# DRIVER CODE
 if __name__ == "__main__":
     target_domain = input("Enter the target domain or IP address: ")
     target_ip = get_ip_address(target_domain)
 
     if target_ip:
-        print(f"Scanning {target_domain} ({target_ip})")
+        log_and_print(f"Scanning {target_domain} ({target_ip})")
 
         start_port = int(input("Enter the start port: "))
         end_port = int(input("Enter the end port:"))
 
         xmas_open_ports = xmas_scan(target_ip, start_port, end_port)
 
-        print("XMAS Scanning Results:")
+        log_and_print("XMAS Scanning Results:", level=logging.INFO)
         if xmas_open_ports:
             print(f"Open ports on {target_domain} ({target_ip}): {xmas_open_ports}")
         else:
@@ -210,6 +224,7 @@ if __name__ == "__main__":
             print("\nWHOIS Information:")
             print(whois_info)
         else:
+            log_and_print("Failed to retrieve WHOIS information", level=logging.ERROR)
             print("Failed to retrieve WHOIS information")
 
         dns_results = dns_enumeration(target_domain)
@@ -218,6 +233,7 @@ if __name__ == "__main__":
             for ip in dns_results:
                 print(f"{target_domain} resolves to {ip}")
         else:
+            log_and_print(f"No DNS records found for {target_domain}", level=logging.WARNING)
             print(f"No DNS records found for {target_domain}")
 
         geolocation_info = get_geolocation(target_ip)
@@ -226,6 +242,7 @@ if __name__ == "__main__":
             for key, value in geolocation_info.items():
                 print(f"{key}: {value}")
         else:
+            log_and_print("Failed to retrieve geolocation information.", level=logging.ERROR)
             print("Failed to retrieve geolocation information.")
 
         network_map = create_network_map([target_ip] + dns_results, xmas_open_ports)
@@ -242,5 +259,7 @@ if __name__ == "__main__":
 
         save_format = input("Select a format to save the results (csv/json/html/xml/txt): ").lower()
         save_results(results, save_format)
+        log_and_print(f"Results saved in {save_format} format.", level=logging.INFO)
     else:
-        print("Invalid domain or IP address")
+        log_and_print("Invalid domain or IP address", level=logging.ERROR)
+
