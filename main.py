@@ -2,6 +2,7 @@ import socket
 import whois
 import dns.resolver
 import requests
+from scapy.all import *
 
 def get_ip_address(domain):
     try:
@@ -10,14 +11,21 @@ def get_ip_address(domain):
     except socket.gaierror:
         return None
 
-def scan_ports(ip_address, start_port, end_port):
+def syn_scan(ip_address, start_port, end_port):
     open_ports = []
     for port in range(start_port, end_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(2)
-            result = sock.connect_ex((ip_address, port))
-            if result == 0:
-                open_ports.append(port)
+        src_port = RandShort()
+        response = sr1(IP(dst=ip_address)/TCP(sport=src_port, dport=port, flags="S"), timeout=2, verbose=0)
+        if response and response.haslayer(TCP) and response[TCP].flags == 0x12:
+            open_ports.append(port)
+    return open_ports
+
+def udp_scan(ip_address, start_port, end_port):
+    open_ports = []
+    for port in range(start_port, end_port + 1):
+        response = sr1(IP(dst=ip_address)/UDP(sport=RandShort(), dport=port), timeout=2, verbose=0)
+        if response and response.haslayer(UDP):
+            open_ports.append(port)
     return open_ports
 
 def get_whois_info(domain):
@@ -66,27 +74,36 @@ if __name__ == "__main__":
         start_port = int(input("Enter the start port: "))
         end_port = int(input("Enter the end port:"))
 
-        open_ports = scan_ports(target_ip, start_port, end_port)
-        if open_ports:
-            print(f"Open ports on {target_domain} ({target_ip}): {open_ports}")
+        syn_open_ports = syn_scan(target_ip, start_port, end_port)
+        udp_open_ports = udp_scan(target_ip, start_port, end_port)
 
-            banner_info = banner_grabbing(target_ip, open_ports)
-            print("Service Banners:")
-            for port, banner in banner_info.items():
-                print(f"Port {port}: {banner}")
+        print("SYN Scanning Results:")
+        if syn_open_ports:
+            print(f"Open ports on {target_domain} ({target_ip}): {syn_open_ports}")
         else:
-            print(f"No open ports found on {target_domain} ({target_ip})")
+            print(f"No open ports found on {target_domain} using SYN scanning.")
+
+        print("\nUDP Scanning Results:")
+        if udp_open_ports:
+            print(f"Open ports on {target_domain} ({target_ip}): {udp_open_ports}")
+        else:
+            print(f"No open ports found on {target_domain} using UDP scanning.")
+
+        banner_info = banner_grabbing(target_ip, syn_open_ports)
+        print("\nService Banners (SYN Scanning):")
+        for port, banner in banner_info.items():
+            print(f"Port {port}: {banner}")
 
         whois_info = get_whois_info(target_domain)
         if whois_info:
-            print("WHOIS Information:")
+            print("\nWHOIS Information:")
             print(whois_info)
         else:
             print("Failed to retrieve WHOIS information")
-        
+
         dns_results = dns_enumeration(target_domain)
         if dns_results:
-            print("DNS Enumeration:")
+            print("\nDNS Enumeration:")
             for ip in dns_results:
                 print(f"{target_domain} resolves to {ip}")
         else:
@@ -94,9 +111,14 @@ if __name__ == "__main__":
 
         geolocation_info = get_geolocation(target_ip)
         if geolocation_info:
-            print("Geolocation Information:")
+            print("\nGeolocation Information:")
             for key, value in geolocation_info.items():
                 print(f"{key}: {value}")
+        else:
+            print("Failed to retrieve geolocation information.")
+    else:
+        print("Invalid domain or IP address")
+
         else:
             print("Failed to retrieve geolocation information.")
     else:
