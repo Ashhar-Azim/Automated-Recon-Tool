@@ -11,20 +11,12 @@ def get_ip_address(domain):
     except socket.gaierror:
         return None
 
-def syn_scan(ip_address, start_port, end_port):
+def xmas_scan(ip_address, start_port, end_port):
     open_ports = []
     for port in range(start_port, end_port + 1):
         src_port = RandShort()
-        response = sr1(IP(dst=ip_address)/TCP(sport=src_port, dport=port, flags="S"), timeout=2, verbose=0)
-        if response and response.haslayer(TCP) and response[TCP].flags == 0x12:
-            open_ports.append(port)
-    return open_ports
-
-def udp_scan(ip_address, start_port, end_port):
-    open_ports = []
-    for port in range(start_port, end_port + 1):
-        response = sr1(IP(dst=ip_address)/UDP(sport=RandShort(), dport=port), timeout=2, verbose=0)
-        if response and response.haslayer(UDP):
+        response = sr1(IP(dst=ip_address)/TCP(sport=src_port, dport=port, flags="FPU"), timeout=2, verbose=0)
+        if response and response.haslayer(TCP) and response[TCP].flags == 0x14:
             open_ports.append(port)
     return open_ports
 
@@ -74,23 +66,16 @@ if __name__ == "__main__":
         start_port = int(input("Enter the start port: "))
         end_port = int(input("Enter the end port:"))
 
-        syn_open_ports = syn_scan(target_ip, start_port, end_port)
-        udp_open_ports = udp_scan(target_ip, start_port, end_port)
+        xmas_open_ports = xmas_scan(target_ip, start_port, end_port)
 
-        print("SYN Scanning Results:")
-        if syn_open_ports:
-            print(f"Open ports on {target_domain} ({target_ip}): {syn_open_ports}")
+        print("XMAS Scanning Results:")
+        if xmas_open_ports:
+            print(f"Open ports on {target_domain} ({target_ip}): {xmas_open_ports}")
         else:
-            print(f"No open ports found on {target_domain} using SYN scanning.")
+            print(f"No open ports found on {target_domain} using XMAS scanning.")
 
-        print("\nUDP Scanning Results:")
-        if udp_open_ports:
-            print(f"Open ports on {target_domain} ({target_ip}): {udp_open_ports}")
-        else:
-            print(f"No open ports found on {target_domain} using UDP scanning.")
-
-        banner_info = banner_grabbing(target_ip, syn_open_ports)
-        print("\nService Banners (SYN Scanning):")
+        banner_info = banner_grabbing(target_ip, xmas_open_ports)
+        print("\nService Banners (XMAS Scanning):")
         for port, banner in banner_info.items():
             print(f"Port {port}: {banner}")
 
@@ -119,7 +104,3 @@ if __name__ == "__main__":
     else:
         print("Invalid domain or IP address")
 
-        else:
-            print("Failed to retrieve geolocation information.")
-    else:
-        print("Invalid domain or IP address")
