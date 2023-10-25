@@ -5,6 +5,10 @@ import requests
 from scapy.all import *
 import networkx as nx
 import matplotlib.pyplot as plt
+import csv
+import json
+import html
+import xml.etree.ElementTree as ET
 
 def get_ip_address(domain):
     try:
@@ -80,6 +84,34 @@ def plot_network_map(G):
     plt.axis('off')
     plt.show()
 
+def save_results(results, format):
+    if format == "csv":
+        with open("recon_results.csv", 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['IP Address', 'Open Ports', 'Service Banners', 'WHOIS Information', 'DNS Records', 'Geolocation Info'])
+            for result in results:
+                writer.writerow(result)
+    elif format == "json":
+        with open("recon_results.json", 'w') as jsonfile:
+            json.dump(results, jsonfile, indent=4)
+    elif format == "html":
+        with open("recon_results.html", 'w') as htmlfile:
+            htmlfile.write(html.escape(json.dumps(results, indent=4)))
+    elif format == "xml":
+        root = ET.Element("ReconResults")
+        for result in results:
+            entry = ET.SubElement(root, "Entry")
+            for key, value in result.items():
+                sub_element = ET.SubElement(entry, key)
+                sub_element.text = value
+        tree = ET.ElementTree(root)
+        tree.write("recon_results.xml")
+    elif format == "txt":
+        with open("recon_results.txt", 'w') as txtfile:
+            for result in results:
+                for key, value in result.items():
+                    txtfile.write(f"{key}: {value}\n")
+
 if __name__ == "__main__":
     target_domain = input("Enter the target domain or IP address: ")
     target_ip = get_ip_address(target_domain)
@@ -128,7 +160,21 @@ if __name__ == "__main__":
         
         network_map = create_network_map([target_ip] + dns_results, xmas_open_ports)
         plot_network_map(network_map)
+
+        # Collect results for saving
+        results = [{
+            'IP Address': target_ip,
+            'Open Ports': xmas_open_ports,
+            'Service Banners': banner_info,
+            'WHOIS Information': whois_info,
+            'DNS Records': dns_results,
+            'Geolocation Info': geolocation_info
+        }]
+
+        save_format = input("Select a format to save the results (csv/json/html/xml/txt): ").lower()
+        save_results(results, save_format)
     else:
         print("Invalid domain or IP address")
+
 
 
