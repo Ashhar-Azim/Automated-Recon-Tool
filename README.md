@@ -14,5 +14,5 @@ This Python script is designed for network reconnaissance tasks, including obtai
 2. Install the required Python packages by running the following command:
 
    ```bash
-   pip install scapy requests networkx dnspython python-whois matplotlib```
+   pip install scapy requests networkx dnspython python-whois matplotlib
 
